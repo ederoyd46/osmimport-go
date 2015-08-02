@@ -1,5 +1,7 @@
 package main
 
+import "log"
+
 //ConvertStringTable converts the string table so it returns a string slice instead of bytes.
 func ConvertStringTable(stringTable [][]byte) []string {
 	var convertedTable []string
@@ -9,7 +11,7 @@ func ConvertStringTable(stringTable [][]byte) []string {
 	return convertedTable
 }
 
-//DeltaDecodeInt64 for int64
+//DeltaDecodeInt64 Takes a seed value (normally 0) and a list. Delta decodes and returns the list (i.e. the next value is determined by the previous value plus the difference).
 func DeltaDecodeInt64(seed int64, data []int64) []int64 {
 	var decodedVals []int64
 	for _, entry := range data {
@@ -20,7 +22,7 @@ func DeltaDecodeInt64(seed int64, data []int64) []int64 {
 	return decodedVals
 }
 
-//DeltaDecodeInt32 for int32
+//DeltaDecodeInt32 Takes a seed value (normally 0) and a list. Delta decodes and returns the list (i.e. the next value is determined by the previous value plus the difference).
 func DeltaDecodeInt32(seed int32, data []int32) []int32 {
 	var decodedVals []int32
 	for _, entry := range data {
@@ -31,7 +33,7 @@ func DeltaDecodeInt32(seed int32, data []int32) []int32 {
 	return decodedVals
 }
 
-//DeltaDecodeInt64ToFloat for int64 to float64
+//DeltaDecodeInt64ToFloat Takes a seed value (normally 0) and a list. Delta decodes and returns the list (i.e. the next value is determined by the previous value plus the difference).
 func DeltaDecodeInt64ToFloat(seed int64, data []int64) []float64 {
 	var decodedVals []float64
 	for _, entry := range data {
@@ -40,4 +42,11 @@ func DeltaDecodeInt64ToFloat(seed int64, data []int64) []float64 {
 		decodedVals = append(decodedVals, decodedEntry)
 	}
 	return decodedVals
+}
+
+//LogError Generic function loging out errors
+func LogError(errReference error) {
+	if errReference != nil {
+		log.Fatal(errReference)
+	}
 }

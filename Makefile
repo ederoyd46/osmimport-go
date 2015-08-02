@@ -17,6 +17,7 @@ update_deps:
 	go get -u github.com/k0kubun/pp
 	go get -u golang.org/x/tools/cmd/godoc
 	go get -u github.com/motemen/gore
+	go get -u github.com/dancannon/gorethink
 	# go get -u github.com/libgit2/git2go
 	# go get -u github.com/mattbaird/elastigo
 
@@ -28,3 +29,12 @@ build:
 
 install:
 	@go install
+
+start_db_matts_mac:
+	rethinkdb -d /Volumes/Ramdisk/rethink_db &> /tmp/rethinkdb.log &
+
+stop_db_matts_mac:
+	@pgrep rethinkdb | xargs kill
+
+open_db_matts_mac:
+	@open -a firefox http://localhost:8080

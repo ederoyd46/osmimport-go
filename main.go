@@ -6,7 +6,6 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"osm/fileformat"
 	"osm/osmformat"
@@ -22,7 +21,7 @@ func main() {
 
 func startImport(fileName string) {
 	file, err := os.Open(fileName)
-	logError(err)
+	LogError(err)
 
 	getBlock(4, file)
 	file.Close()
@@ -31,11 +30,15 @@ func startImport(fileName string) {
 func getBlock(size int64, file *os.File) {
 
 	headerSizeData := make([]byte, size)
-	file.Read(headerSizeData)
+	_, err := file.Read(headerSizeData)
+	if err != nil {
+		//Probably end of file
+		return
+	}
 
 	var headerSize uint32
-	err := binary.Read(bytes.NewBuffer(headerSizeData), binary.BigEndian, &headerSize)
-	logError(err)
+	err = binary.Read(bytes.NewBuffer(headerSizeData), binary.BigEndian, &headerSize)
+	LogError(err)
 
 	headerData := make([]byte, headerSize)
 	file.Read(headerData)
@@ -52,14 +55,14 @@ func getBlock(size int64, file *os.File) {
 	proto.Unmarshal(blobData, &blob)
 
 	zr, err := zlib.NewReader(bytes.NewBuffer(blob.GetZlibData()))
-	logError(err)
+	LogError(err)
 
 	fmt.Println("Compressed Size", len(blob.GetZlibData()))
 	fmt.Println("Raw Size:", blob.GetRawSize())
 
 	var blobUncompressed = make([]byte, blob.GetRawSize())
 	io.ReadFull(zr, blobUncompressed)
-	logError(err)
+	LogError(err)
 	zr.Close()
 
 	// var readCount int32
@@ -67,7 +70,7 @@ func getBlock(size int64, file *os.File) {
 	// for readCount < blob.GetRawSize() {
 	// 	blobSection := make([]byte, 32768)
 	// 	count, err := zr.Read(blobSection)
-	// 	logError(err)
+	// 	LogError(err)
 	// 	readCount = readCount + int32(count)
 	// 	// fmt.Println("readCount", readCount)
 	// 	blobUncompressed = append(blobUncompressed, blobSection...)
@@ -75,14 +78,14 @@ func getBlock(size int64, file *os.File) {
 
 	if "OSMHeader" == header.GetType() {
 		osmHeader(blobUncompressed)
-		getBlock(4, file)
+		// getBlock(4, file)
 	}
 
 	if "OSMData" == header.GetType() {
 		osmData(blobUncompressed)
 	}
 
-	// getBlock(4, file)
+	getBlock(4, file)
 
 }
 
@@ -144,27 +147,23 @@ func buildKeyVals(mixedKeyVals []int32, stringTable []string) []map[string]strin
 }
 
 func handlePrimitiveGroupData(group *osmformat.PrimitiveGroup, stringTable []string) {
-	nodes := group.GetDense()
-	size := len(nodes.GetId())
-	uids := DeltaDecodeInt32(0, nodes.GetDenseinfo().GetUid())
-	sids := DeltaDecodeInt32(0, nodes.GetDenseinfo().GetUserSid())
-	timestamps := DeltaDecodeInt64(0, nodes.GetDenseinfo().GetTimestamp())
-	changesets := DeltaDecodeInt64(0, nodes.GetDenseinfo().GetChangeset())
-	latitudes := DeltaDecodeInt64ToFloat(0, nodes.GetLat())
-	longitudes := DeltaDecodeInt64ToFloat(0, nodes.GetLon())
-	keyvals := buildKeyVals(nodes.GetKeysVals(), stringTable)
+	denseNodes := group.GetDense()
+	size := len(denseNodes.GetId())
+	uids := DeltaDecodeInt32(0, denseNodes.GetDenseinfo().GetUid())
+	sids := DeltaDecodeInt32(0, denseNodes.GetDenseinfo().GetUserSid())
+	timestamps := DeltaDecodeInt64(0, denseNodes.GetDenseinfo().GetTimestamp())
+	changesets := DeltaDecodeInt64(0, denseNodes.GetDenseinfo().GetChangeset())
+	latitudes := DeltaDecodeInt64ToFloat(0, denseNodes.GetLat())
+	longitudes := DeltaDecodeInt64ToFloat(0, denseNodes.GetLon())
+	keyvals := buildKeyVals(denseNodes.GetKeysVals(), stringTable)
 
+	var nodes []Node
 	for i := 0; i < size; i++ {
-		node := Node{id: nodes.GetId()[i], latitude: latitudes[i], longitude: longitudes[i],
-			timestamp: timestamps[i], changeset: changesets[i], uid: uids[i],
-			sid: stringTable[sids[i]], tags: keyvals[i]}
-		fmt.Println(node)
+		node := Node{ID: denseNodes.GetId()[i], Latitude: latitudes[i], Longitude: longitudes[i],
+			Timestamp: timestamps[i], Changeset: changesets[i], UID: uids[i],
+			SID: stringTable[sids[i]], Tags: keyvals[i]}
+		nodes = append(nodes, node)
 	}
 
-}
-
-func logError(errReference error) {
-	if errReference != nil {
-		log.Fatal(errReference)
-	}
+	SaveNodes(nodes)
 }
