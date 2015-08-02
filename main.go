@@ -52,7 +52,6 @@ func getBlock(size int64, file *os.File) {
 	proto.Unmarshal(blobData, &blob)
 
 	zr, err := zlib.NewReader(bytes.NewBuffer(blob.GetZlibData()))
-
 	logError(err)
 
 	fmt.Println("Compressed Size", len(blob.GetZlibData()))
@@ -60,6 +59,8 @@ func getBlock(size int64, file *os.File) {
 
 	var blobUncompressed = make([]byte, blob.GetRawSize())
 	io.ReadFull(zr, blobUncompressed)
+	logError(err)
+	zr.Close()
 
 	// var readCount int32
 	//
@@ -71,9 +72,6 @@ func getBlock(size int64, file *os.File) {
 	// 	// fmt.Println("readCount", readCount)
 	// 	blobUncompressed = append(blobUncompressed, blobSection...)
 	// }
-
-	logError(err)
-	zr.Close()
 
 	if "OSMHeader" == header.GetType() {
 		osmHeader(blobUncompressed)
@@ -109,29 +107,6 @@ func osmData(blobUncompressed []byte) {
 
 }
 
-func handlePrimitiveGroupData(group *osmformat.PrimitiveGroup, stringTable []string) {
-	var nodes = group.GetDense()
-
-	if nodes != nil {
-		fmt.Println("  Ids:", len(nodes.GetId()))
-		fmt.Println("  KeyVals:", len(nodes.GetKeysVals()))
-		fmt.Println("  Lats:", len(nodes.Lat))
-		fmt.Println("  Lons:", len(nodes.GetLon()))
-		fmt.Println("  Versions:", len(nodes.GetDenseinfo().GetVersion()))
-		fmt.Println("  Uids:", len(nodes.GetDenseinfo().GetUid()))
-		fmt.Println("  Sids:", len(nodes.GetDenseinfo().GetUserSid()))
-		fmt.Println("  Timestamps:", len(nodes.GetDenseinfo().GetTimestamp()))
-		fmt.Println("  Changesets:", len(nodes.GetDenseinfo().GetChangeset()))
-		fmt.Println("    Uids:", len(DeltaDecodeInt32(0, nodes.GetDenseinfo().GetUid())))
-		fmt.Println("    Sids:", len(DeltaDecodeInt32(0, nodes.GetDenseinfo().GetUserSid())))
-		fmt.Println("    Timestamps:", len(DeltaDecodeInt64(0, nodes.GetDenseinfo().GetTimestamp())))
-		fmt.Println("    Changesets:", len(DeltaDecodeInt64(0, nodes.GetDenseinfo().GetChangeset())))
-		fmt.Println("    Latitudes:", len(DeltaDecodeInt64ToFloat(0, nodes.GetLat())))
-		fmt.Println("    Longitudes:", len(DeltaDecodeInt64ToFloat(0, nodes.GetLon())))
-	}
-
-}
-
 func osmHeader(blobUncompressed []byte) {
 	var headerBlock osmformat.HeaderBlock
 	proto.Unmarshal(blobUncompressed, &headerBlock)
@@ -145,6 +120,46 @@ func osmHeader(blobUncompressed []byte) {
 	fmt.Println(" Min Lon:", minlon)
 	fmt.Println(" Max Lat:", maxlat)
 	fmt.Println(" Max Lon:", maxlon)
+
+}
+
+func buildKeyVals(mixedKeyVals []int32, stringTable []string) []map[string]string {
+	var keyvals []map[string]string
+	keyvalEntry := make(map[string]string)
+
+	count := len(mixedKeyVals)
+	for i := 0; i < count; {
+		if mixedKeyVals[i] == 0 {
+			keyvals = append(keyvals, keyvalEntry)
+			keyvalEntry = map[string]string{}
+			i = i + 1
+		} else {
+			key := stringTable[mixedKeyVals[i]]
+			val := stringTable[mixedKeyVals[i+1]]
+			keyvalEntry[key] = val
+			i = i + 2
+		}
+	}
+	return keyvals
+}
+
+func handlePrimitiveGroupData(group *osmformat.PrimitiveGroup, stringTable []string) {
+	nodes := group.GetDense()
+	size := len(nodes.GetId())
+	uids := DeltaDecodeInt32(0, nodes.GetDenseinfo().GetUid())
+	sids := DeltaDecodeInt32(0, nodes.GetDenseinfo().GetUserSid())
+	timestamps := DeltaDecodeInt64(0, nodes.GetDenseinfo().GetTimestamp())
+	changesets := DeltaDecodeInt64(0, nodes.GetDenseinfo().GetChangeset())
+	latitudes := DeltaDecodeInt64ToFloat(0, nodes.GetLat())
+	longitudes := DeltaDecodeInt64ToFloat(0, nodes.GetLon())
+	keyvals := buildKeyVals(nodes.GetKeysVals(), stringTable)
+
+	for i := 0; i < size; i++ {
+		node := Node{id: nodes.GetId()[i], latitude: latitudes[i], longitude: longitudes[i],
+			timestamp: timestamps[i], changeset: changesets[i], uid: uids[i],
+			sid: stringTable[sids[i]], tags: keyvals[i]}
+		fmt.Println(node)
+	}
 
 }
 

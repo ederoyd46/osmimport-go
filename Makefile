@@ -1,5 +1,7 @@
 BASE_DIR=`pwd`
 
+default: run
+
 update_deps:
 	go get -u github.com/golang/lint/golint
 	go get -u golang.org/x/tools/cmd/gotype
