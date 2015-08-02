@@ -3,6 +3,8 @@ BASE_DIR=`pwd`
 default: run
 
 update_deps:
+	go get -u github.com/ederoyd46/osm/osmformat
+	go get -u github.com/ederoyd46/osm/fileformat
 	go get -u github.com/golang/lint/golint
 	go get -u golang.org/x/tools/cmd/gotype
 	go get -u github.com/nsf/gocode

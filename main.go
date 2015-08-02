@@ -7,8 +7,9 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"osm/fileformat"
-	"osm/osmformat"
+
+	"github.com/ederoyd46/osm/fileformat"
+	"github.com/ederoyd46/osm/osmformat"
 
 	"github.com/golang/protobuf/proto"
 )
