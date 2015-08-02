@@ -79,6 +79,7 @@ func getBlock(size int64, file *os.File) {
 
 func osmHeader(blobUncompressed []byte) {
 	var headerBlock osmformat.HeaderBlock
+
 	proto.Unmarshal(blobUncompressed, &headerBlock)
 
 	minlat := float64(headerBlock.GetBbox().GetBottom()) / nano
