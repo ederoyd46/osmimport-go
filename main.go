@@ -13,8 +13,6 @@ import (
 	"github.com/golang/protobuf/proto"
 )
 
-const nano float64 = 1000000000
-
 func main() {
 	startImport("./download/hertfordshire-latest.osm.pbf")
 }
@@ -65,17 +63,6 @@ func getBlock(size int64, file *os.File) {
 	LogError(err)
 	zr.Close()
 
-	// var readCount int32
-	//
-	// for readCount < blob.GetRawSize() {
-	// 	blobSection := make([]byte, 32768)
-	// 	count, err := zr.Read(blobSection)
-	// 	LogError(err)
-	// 	readCount = readCount + int32(count)
-	// 	// fmt.Println("readCount", readCount)
-	// 	blobUncompressed = append(blobUncompressed, blobSection...)
-	// }
-
 	if "OSMHeader" == header.GetType() {
 		osmHeader(blobUncompressed)
 		// getBlock(4, file)
@@ -86,6 +73,22 @@ func getBlock(size int64, file *os.File) {
 	}
 
 	getBlock(4, file)
+
+}
+
+func osmHeader(blobUncompressed []byte) {
+	var headerBlock osmformat.HeaderBlock
+	proto.Unmarshal(blobUncompressed, &headerBlock)
+
+	minlat := float64(headerBlock.GetBbox().GetBottom()) / nano
+	minlon := float64(headerBlock.GetBbox().GetLeft()) / nano
+	maxlat := float64(headerBlock.GetBbox().GetTop()) / nano
+	maxlon := float64(headerBlock.GetBbox().GetRight()) / nano
+
+	fmt.Println(" Min Lat:", minlat)
+	fmt.Println(" Min Lon:", minlon)
+	fmt.Println(" Max Lat:", maxlat)
+	fmt.Println(" Max Lon:", maxlon)
 
 }
 
@@ -105,24 +108,12 @@ func osmData(blobUncompressed []byte) {
 	var primitiveGroup = primitiveBlock.GetPrimitivegroup()
 
 	for _, group := range primitiveGroup {
-		handlePrimitiveGroupData(group, stringTable)
+		handlePrimitiveGroupData(group,
+			stringTable,
+			float64(primitiveBlock.GetGranularity()),
+			int64(primitiveBlock.GetDateGranularity()),
+		)
 	}
-
-}
-
-func osmHeader(blobUncompressed []byte) {
-	var headerBlock osmformat.HeaderBlock
-	proto.Unmarshal(blobUncompressed, &headerBlock)
-
-	minlat := float64(headerBlock.GetBbox().GetBottom()) / nano
-	minlon := float64(headerBlock.GetBbox().GetLeft()) / nano
-	maxlat := float64(headerBlock.GetBbox().GetTop()) / nano
-	maxlon := float64(headerBlock.GetBbox().GetRight()) / nano
-
-	fmt.Println(" Min Lat:", minlat)
-	fmt.Println(" Min Lon:", minlon)
-	fmt.Println(" Max Lat:", maxlat)
-	fmt.Println(" Max Lon:", maxlon)
 
 }
 
@@ -146,7 +137,7 @@ func buildKeyVals(mixedKeyVals []int32, stringTable []string) []map[string]strin
 	return keyvals
 }
 
-func handlePrimitiveGroupData(group *osmformat.PrimitiveGroup, stringTable []string) {
+func handlePrimitiveGroupData(group *osmformat.PrimitiveGroup, stringTable []string, granularity float64, dateGranularity int64) {
 	denseNodes := group.GetDense()
 	size := len(denseNodes.GetId())
 	uids := DeltaDecodeInt32(0, denseNodes.GetDenseinfo().GetUid())
@@ -159,11 +150,16 @@ func handlePrimitiveGroupData(group *osmformat.PrimitiveGroup, stringTable []str
 
 	var nodes []Node
 	for i := 0; i < size; i++ {
-		node := Node{ID: denseNodes.GetId()[i], Latitude: latitudes[i], Longitude: longitudes[i],
-			Timestamp: timestamps[i], Changeset: changesets[i], UID: uids[i],
-			SID: stringTable[sids[i]], Tags: keyvals[i]}
+		node := Node{
+			ID:        denseNodes.GetId()[i],
+			Latitude:  CalculateDegrees(latitudes[i], granularity),
+			Longitude: CalculateDegrees(longitudes[i], granularity),
+			Timestamp: CalculateTime(timestamps[i], dateGranularity),
+			Changeset: changesets[i],
+			UID:       uids[i],
+			SID:       stringTable[sids[i]],
+			Tags:      keyvals[i]}
 		nodes = append(nodes, node)
 	}
-
 	SaveNodes(nodes)
 }

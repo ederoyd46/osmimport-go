@@ -1,6 +1,25 @@
 package main
 
-import r "github.com/dancannon/gorethink"
+import (
+	"fmt"
+
+	r "github.com/dancannon/gorethink"
+)
+
+var (
+	session *r.Session
+)
+
+func init() {
+	session = connect()
+	checkDatabase()
+}
+
+func checkDatabase() {
+	databases, err := r.DBList().Run(session)
+	LogError(err)
+	fmt.Println(databases)
+}
 
 func connect() *r.Session {
 	var session *r.Session

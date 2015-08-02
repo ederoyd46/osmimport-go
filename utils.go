@@ -1,6 +1,21 @@
 package main
 
-import "log"
+import (
+	"log"
+	"time"
+)
+
+const nano float64 = 1000000000
+
+//CalculateDegrees calcluates the real coordinate from the delta decoded one
+func CalculateDegrees(coordinate float64, granularity float64) float64 {
+	return (coordinate * granularity) / nano
+}
+
+//CalculateTime calculates the time
+func CalculateTime(timestamp int64, granularity int64) time.Time {
+	return time.Unix(0, (timestamp * granularity))
+}
 
 //ConvertStringTable converts the string table so it returns a string slice instead of bytes.
 func ConvertStringTable(stringTable [][]byte) []string {
