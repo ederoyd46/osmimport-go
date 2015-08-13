@@ -1,9 +1,6 @@
 package main
 
-import (
-	"log"
-	"time"
-)
+import "time"
 
 const nano float64 = 1000000000
 
@@ -62,6 +59,7 @@ func DeltaDecodeInt64ToFloat(seed int64, data []int64) []float64 {
 //LogError Generic function loging out errors
 func LogError(errReference error) {
 	if errReference != nil {
-		log.Fatal(errReference)
+		// log.Fatal(errReference)
+		panic(errReference)
 	}
 }

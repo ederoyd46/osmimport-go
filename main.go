@@ -15,6 +15,7 @@ import (
 )
 
 func main() {
+	InitDB("localhost:28015", "geo")
 	startImport("./download/hertfordshire-latest.osm.pbf")
 }
 
@@ -66,7 +67,6 @@ func getBlock(size int64, file *os.File) {
 
 	if "OSMHeader" == header.GetType() {
 		osmHeader(blobUncompressed)
-		// getBlock(4, file)
 	}
 
 	if "OSMData" == header.GetType() {
