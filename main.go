@@ -140,8 +140,35 @@ func buildKeyVals(mixedKeyVals []int32, stringTable []string) []map[string]strin
 }
 
 func handlePrimitiveGroupData(group *osmformat.PrimitiveGroup, stringTable []string, granularity float64, dateGranularity int64) {
-	denseNodes := group.GetDense()
+	handleNodes(group.GetDense(), stringTable, granularity, dateGranularity)
+	var ways []Way
+	pbWays := group.GetWays()
+
+	for _, pbWay := range pbWays {
+		way := Way{
+			ID:        pbWay.GetId(),
+			Version:   pbWay.GetInfo().GetVersion(),
+			Timestamp: CalculateTime(int64(pbWay.GetInfo().GetTimestamp()), dateGranularity),
+			Changeset: pbWay.GetInfo().GetChangeset(),
+			UID:       pbWay.GetInfo().GetUid(),
+			User:      stringTable[pbWay.GetInfo().GetUserSid()],
+			Tags:      BuildTags(pbWay.GetKeys(), pbWay.GetVals(), stringTable),
+			Refs:      DeltaDecodeInt64(0, pbWay.GetRefs()),
+		}
+		ways = append(ways, way)
+	}
+
+	SaveWays(ways)
+
+}
+
+func handleNodes(denseNodes *osmformat.DenseNodes, stringTable []string, granularity float64, dateGranularity int64) {
 	size := len(denseNodes.GetId())
+
+	if size == 0 {
+		return
+	}
+
 	uids := DeltaDecodeInt32(0, denseNodes.GetDenseinfo().GetUid())
 	sids := DeltaDecodeInt32(0, denseNodes.GetDenseinfo().GetUserSid())
 	timestamps := DeltaDecodeInt64(0, denseNodes.GetDenseinfo().GetTimestamp())
@@ -159,9 +186,10 @@ func handlePrimitiveGroupData(group *osmformat.PrimitiveGroup, stringTable []str
 			Timestamp: CalculateTime(timestamps[i], dateGranularity),
 			Changeset: changesets[i],
 			UID:       uids[i],
-			SID:       stringTable[sids[i]],
+			User:      stringTable[sids[i]],
 			Tags:      keyvals[i]}
 		nodes = append(nodes, node)
 	}
 	SaveNodes(nodes)
+
 }

@@ -6,6 +6,7 @@ var (
 	session      *r.Session
 	databaseName string
 	nodeTable    = "node"
+	wayTable     = "way"
 )
 
 func checkDatabase() {
@@ -20,16 +21,15 @@ func checkDatabase() {
 	LogError(err)
 }
 
-func checkTables() {
+func checkTable(tname string) {
 	tables, err := r.DB(databaseName).TableList().Run(session)
 	var result string
 	for tables.Next(&result) {
-		if result == nodeTable {
+		if result == tname {
 			return
 		}
 	}
-
-	_, err = r.DB(databaseName).TableCreate(nodeTable).Run(session)
+	_, err = r.DB(databaseName).TableCreate(tname).Run(session)
 	LogError(err)
 }
 
@@ -47,7 +47,8 @@ func InitDB(host, dbname string) {
 	session = connect(host)
 	databaseName = dbname
 	checkDatabase()
-	checkTables()
+	checkTable(nodeTable)
+	checkTable(wayTable)
 }
 
 //KillSession disconnects from the database
@@ -55,8 +56,14 @@ func KillSession() {
 	session.Close()
 }
 
-//SaveNodes saves a node to the database
-func SaveNodes(node []Node) {
-	_, err := r.DB(databaseName).Table(nodeTable).Insert(node).RunWrite(session)
+//SaveNodes saves nodes to the database
+func SaveNodes(nodes []Node) {
+	_, err := r.DB(databaseName).Table(nodeTable).Insert(nodes).RunWrite(session)
+	LogError(err)
+}
+
+//SaveWays saves a node to the database
+func SaveWays(ways []Way) {
+	_, err := r.DB(databaseName).Table(wayTable).Insert(ways).RunWrite(session)
 	LogError(err)
 }

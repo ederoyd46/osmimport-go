@@ -56,6 +56,16 @@ func DeltaDecodeInt64ToFloat(seed int64, data []int64) []float64 {
 	return decodedVals
 }
 
+//BuildTags Builds a tag
+func BuildTags(keys, vals []uint32, stringTable []string) map[string]string {
+	tags := make(map[string]string)
+
+	for i := range keys {
+		tags[stringTable[keys[i]]] = stringTable[vals[i]]
+	}
+	return tags
+}
+
 //LogError Generic function loging out errors
 func LogError(errReference error) {
 	if errReference != nil {
