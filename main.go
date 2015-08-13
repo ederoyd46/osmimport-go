@@ -17,12 +17,12 @@ import (
 func main() {
 	InitDB("localhost:28015", "geo")
 	startImport("./download/hertfordshire-latest.osm.pbf")
+	KillSession()
 }
 
 func startImport(fileName string) {
 	file, err := os.Open(fileName)
 	LogError(err)
-
 	getBlock(4, file)
 	file.Close()
 }
@@ -141,9 +141,15 @@ func buildKeyVals(mixedKeyVals []int32, stringTable []string) []map[string]strin
 
 func handlePrimitiveGroupData(group *osmformat.PrimitiveGroup, stringTable []string, granularity float64, dateGranularity int64) {
 	handleNodes(group.GetDense(), stringTable, granularity, dateGranularity)
-	var ways []Way
-	pbWays := group.GetWays()
+	handleWays(group.GetWays(), stringTable, granularity, dateGranularity)
+}
 
+func handleRelations(pbRelations []*osmformat.Relation, stringTable []string, granularity float64, dateGranularity int64) {
+
+}
+
+func handleWays(pbWays []*osmformat.Way, stringTable []string, granularity float64, dateGranularity int64) {
+	var ways []Way
 	for _, pbWay := range pbWays {
 		way := Way{
 			ID:        pbWay.GetId(),
@@ -157,9 +163,7 @@ func handlePrimitiveGroupData(group *osmformat.PrimitiveGroup, stringTable []str
 		}
 		ways = append(ways, way)
 	}
-
 	SaveWays(ways)
-
 }
 
 func handleNodes(denseNodes *osmformat.DenseNodes, stringTable []string, granularity float64, dateGranularity int64) {
@@ -191,5 +195,4 @@ func handleNodes(denseNodes *osmformat.DenseNodes, stringTable []string, granula
 		nodes = append(nodes, node)
 	}
 	SaveNodes(nodes)
-
 }
