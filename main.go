@@ -16,7 +16,8 @@ import (
 
 func main() {
 	InitDB("localhost:28015", "geo")
-	startImport("./download/hertfordshire-latest.osm.pbf")
+	// startImport("./download/hertfordshire-latest.osm.pbf")
+	startImport("./download/england-latest.osm.pbf")
 	KillSession()
 }
 
