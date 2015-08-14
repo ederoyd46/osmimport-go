@@ -1,6 +1,10 @@
 package main
 
-import "time"
+import (
+	"time"
+
+	"github.com/ederoyd46/osm/osmformat"
+)
 
 const nano float64 = 1000000000
 
@@ -64,6 +68,27 @@ func BuildTags(keys, vals []uint32, stringTable []string) map[string]string {
 		tags[stringTable[keys[i]]] = stringTable[vals[i]]
 	}
 	return tags
+}
+
+//BuildStringList Builds a string from ints
+func BuildStringList(sid []int32, stringTable []string) []string {
+	var entries []string
+
+	for i := range sid {
+		entries = append(entries, stringTable[sid[i]])
+	}
+	return entries
+}
+
+//ParseMemberTypes parse member types
+func ParseMemberTypes(pbTypes []osmformat.Relation_MemberType) []string {
+	var types []string
+
+	for i := range pbTypes {
+		types = append(types, osmformat.Relation_MemberType_name[int32(i)])
+	}
+
+	return types
 }
 
 //LogError Generic function loging out errors

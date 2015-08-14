@@ -79,19 +79,12 @@ func getBlock(size int64, file *os.File) {
 
 func osmHeader(blobUncompressed []byte) {
 	var headerBlock osmformat.HeaderBlock
-
 	proto.Unmarshal(blobUncompressed, &headerBlock)
 
-	minlat := float64(headerBlock.GetBbox().GetBottom()) / nano
-	minlon := float64(headerBlock.GetBbox().GetLeft()) / nano
-	maxlat := float64(headerBlock.GetBbox().GetTop()) / nano
-	maxlon := float64(headerBlock.GetBbox().GetRight()) / nano
-
-	fmt.Println(" Min Lat:", minlat)
-	fmt.Println(" Min Lon:", minlon)
-	fmt.Println(" Max Lat:", maxlat)
-	fmt.Println(" Max Lon:", maxlon)
-
+	fmt.Println(" Min Lat:", float64(headerBlock.GetBbox().GetBottom())/nano)
+	fmt.Println(" Min Lon:", float64(headerBlock.GetBbox().GetLeft())/nano)
+	fmt.Println(" Max Lat:", float64(headerBlock.GetBbox().GetTop())/nano)
+	fmt.Println(" Max Lon:", float64(headerBlock.GetBbox().GetRight())/nano)
 }
 
 func osmData(blobUncompressed []byte) {
@@ -116,7 +109,6 @@ func osmData(blobUncompressed []byte) {
 			int64(primitiveBlock.GetDateGranularity()),
 		)
 	}
-
 }
 
 func buildKeyVals(mixedKeyVals []int32, stringTable []string) []map[string]string {
@@ -142,10 +134,27 @@ func buildKeyVals(mixedKeyVals []int32, stringTable []string) []map[string]strin
 func handlePrimitiveGroupData(group *osmformat.PrimitiveGroup, stringTable []string, granularity float64, dateGranularity int64) {
 	handleNodes(group.GetDense(), stringTable, granularity, dateGranularity)
 	handleWays(group.GetWays(), stringTable, granularity, dateGranularity)
+	handleRelations(group.GetRelations(), stringTable, granularity, dateGranularity)
 }
 
 func handleRelations(pbRelations []*osmformat.Relation, stringTable []string, granularity float64, dateGranularity int64) {
-
+	var relations []Relation
+	for _, pbRelation := range pbRelations {
+		relation := Relation{
+			ID:        pbRelation.GetId(),
+			Version:   pbRelation.GetInfo().GetVersion(),
+			Timestamp: CalculateTime(int64(pbRelation.GetInfo().GetTimestamp()), dateGranularity),
+			Changeset: pbRelation.GetInfo().GetChangeset(),
+			UID:       pbRelation.GetInfo().GetUid(),
+			User:      stringTable[pbRelation.GetInfo().GetUserSid()],
+			Tags:      BuildTags(pbRelation.GetKeys(), pbRelation.GetVals(), stringTable),
+			MemIds:    DeltaDecodeInt64(0, pbRelation.GetMemids()),
+			Roles:     BuildStringList(pbRelation.GetRolesSid(), stringTable),
+			Types:     ParseMemberTypes(pbRelation.GetTypes()),
+		}
+		relations = append(relations, relation)
+	}
+	SaveRelations(relations)
 }
 
 func handleWays(pbWays []*osmformat.Way, stringTable []string, granularity float64, dateGranularity int64) {
@@ -191,7 +200,8 @@ func handleNodes(denseNodes *osmformat.DenseNodes, stringTable []string, granula
 			Changeset: changesets[i],
 			UID:       uids[i],
 			User:      stringTable[sids[i]],
-			Tags:      keyvals[i]}
+			Tags:      keyvals[i],
+		}
 		nodes = append(nodes, node)
 	}
 	SaveNodes(nodes)

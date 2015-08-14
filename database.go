@@ -3,10 +3,11 @@ package main
 import r "github.com/dancannon/gorethink"
 
 var (
-	session      *r.Session
-	databaseName string
-	nodeTable    = "node"
-	wayTable     = "way"
+	session       *r.Session
+	databaseName  string
+	nodeTable     = "node"
+	wayTable      = "way"
+	relationTable = "relation"
 )
 
 func checkDatabase() {
@@ -49,6 +50,7 @@ func InitDB(host, dbname string) {
 	checkDatabase()
 	checkTable(nodeTable)
 	checkTable(wayTable)
+	checkTable(relationTable)
 }
 
 //KillSession disconnects from the database
@@ -65,5 +67,11 @@ func SaveNodes(nodes []Node) {
 //SaveWays saves a node to the database
 func SaveWays(ways []Way) {
 	_, err := r.DB(databaseName).Table(wayTable).Insert(ways).RunWrite(session)
+	LogError(err)
+}
+
+//SaveRelations saves a node to the database
+func SaveRelations(relations []Relation) {
+	_, err := r.DB(databaseName).Table(relationTable).Insert(relations).RunWrite(session)
 	LogError(err)
 }
