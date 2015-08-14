@@ -181,7 +181,7 @@ func handleNodes(denseNodes *osmformat.DenseNodes, stringTable []string, granula
 	if size == 0 {
 		return
 	}
-
+	ids := DeltaDecodeInt64(0, denseNodes.GetId())
 	uids := DeltaDecodeInt32(0, denseNodes.GetDenseinfo().GetUid())
 	sids := DeltaDecodeInt32(0, denseNodes.GetDenseinfo().GetUserSid())
 	timestamps := DeltaDecodeInt64(0, denseNodes.GetDenseinfo().GetTimestamp())
@@ -193,7 +193,7 @@ func handleNodes(denseNodes *osmformat.DenseNodes, stringTable []string, granula
 	var nodes []Node
 	for i := 0; i < size; i++ {
 		node := Node{
-			ID:        denseNodes.GetId()[i],
+			ID:        ids[i],
 			Latitude:  CalculateDegrees(latitudes[i], granularity),
 			Longitude: CalculateDegrees(longitudes[i], granularity),
 			Timestamp: CalculateTime(timestamps[i], dateGranularity),

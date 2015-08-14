@@ -14,8 +14,9 @@ func CalculateDegrees(coordinate float64, granularity float64) float64 {
 }
 
 //CalculateTime calculates the time
-func CalculateTime(timestamp int64, granularity int64) time.Time {
-	return time.Unix(0, (timestamp * granularity))
+func CalculateTime(timestamp int64, granularity int64) string {
+	return time.Unix(timestamp, 0).String()
+
 }
 
 //ConvertStringTable converts the string table so it returns a string slice instead of bytes.
