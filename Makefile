@@ -26,6 +26,8 @@ update_deps:
 run:
 	@find . -name '*.go' -print0 | xargs -0 go run
 
+	# "127.0.0.1:28015" "geo" "./download/hertfordshire-latest.osm.pbf"
+
 build:
 	@go build
 

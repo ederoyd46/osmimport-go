@@ -15,10 +15,24 @@ import (
 )
 
 func main() {
-	InitDB("localhost:28015", "geo")
-	// startImport("./download/hertfordshire-latest.osm.pbf")
-	startImport("./download/england-latest.osm.pbf")
+	fmt.Println(len(os.Args))
+	if len(os.Args) != 4 {
+		help()
+		return //Same as os.Exit(0)
+	}
+
+	dbconnection := os.Args[1]
+	dbname := os.Args[2]
+	filename := os.Args[3]
+
+	InitDB(dbconnection, dbname)
+	startImport(filename)
 	KillSession()
+}
+
+func help() {
+	fmt.Println("usage: dbconnection dbname filename")
+	fmt.Println("example: osmimport-go '127.0.0.1:28015' 'geo' './download/england-latest.osm.pbf'")
 }
 
 func startImport(fileName string) {
