@@ -9,6 +9,6 @@ type Node struct {
 	Timestamp string            `gorethink:"timestamp,omitempty"`
 	Changeset int64             `gorethink:"changeset,omitempty"`
 	UID       int32             `gorethink:"uid,omitempty"`
-	User      string            `gorethink:"sid,omitempty"`
+	User      string            `gorethink:"user,omitempty"`
 	Tags      map[string]string `gorethink:"tags,omitempty"`
 }
