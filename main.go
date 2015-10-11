@@ -7,15 +7,32 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"runtime"
 
 	"github.com/ederoyd46/osm/fileformat"
 	"github.com/ederoyd46/osm/osmformat"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/jeffail/tunny"
 )
 
+var (
+	nodePool *tunny.WorkPool
+)
+
+func createNodePool() {
+	numCPUs := runtime.NumCPU()
+	runtime.GOMAXPROCS(numCPUs)
+	nodePool, _ = tunny.CreatePool(numCPUs, func(nodes interface{}) interface{} {
+		input, _ := nodes.([]Node)
+		fmt.Println("Saving Nodes")
+		SaveNodes(input)
+		return 1
+	}).Open()
+
+}
+
 func main() {
-	fmt.Println(len(os.Args))
 	if len(os.Args) != 4 {
 		help()
 		return //Same as os.Exit(0)
@@ -25,9 +42,13 @@ func main() {
 	dbname := os.Args[2]
 	filename := os.Args[3]
 
+	createNodePool()
+	defer nodePool.Close()
+
 	InitDB(dbconnection, dbname)
 	startImport(filename)
 	KillSession()
+
 }
 
 func help() {
@@ -43,7 +64,6 @@ func startImport(fileName string) {
 }
 
 func getBlock(size int64, file *os.File) {
-
 	headerSizeData := make([]byte, size)
 	_, err := file.Read(headerSizeData)
 	if err != nil {
@@ -61,7 +81,7 @@ func getBlock(size int64, file *os.File) {
 	var header fileformat.BlockHeader
 	proto.Unmarshal(headerData, &header)
 
-	fmt.Println(header.GetType())
+	// fmt.Println(header.GetType())
 
 	blobData := make([]byte, header.GetDatasize())
 	file.Read(blobData)
@@ -72,8 +92,8 @@ func getBlock(size int64, file *os.File) {
 	zr, err := zlib.NewReader(bytes.NewBuffer(blob.GetZlibData()))
 	LogError(err)
 
-	fmt.Println("Compressed Size", len(blob.GetZlibData()))
-	fmt.Println("Raw Size:", blob.GetRawSize())
+	// fmt.Println("Compressed Size", len(blob.GetZlibData()))
+	// fmt.Println("Raw Size:", blob.GetRawSize())
 
 	var blobUncompressed = make([]byte, blob.GetRawSize())
 	io.ReadFull(zr, blobUncompressed)
@@ -106,14 +126,14 @@ func osmData(blobUncompressed []byte) {
 	var primitiveBlock osmformat.PrimitiveBlock
 	proto.Unmarshal(blobUncompressed, &primitiveBlock)
 
-	fmt.Println(" DateGranularity:", primitiveBlock.GetDateGranularity())
-	fmt.Println(" LatOffset:", primitiveBlock.GetLatOffset())
-	fmt.Println(" LonOffset:", primitiveBlock.GetLonOffset())
-	fmt.Println(" Granularity:", primitiveBlock.GetGranularity())
-	fmt.Println(" PrimitiveGroups:", len(primitiveBlock.GetPrimitivegroup()))
+	// fmt.Println(" DateGranularity:", primitiveBlock.GetDateGranularity())
+	// fmt.Println(" LatOffset:", primitiveBlock.GetLatOffset())
+	// fmt.Println(" LonOffset:", primitiveBlock.GetLonOffset())
+	// fmt.Println(" Granularity:", primitiveBlock.GetGranularity())
+	// fmt.Println(" PrimitiveGroups:", len(primitiveBlock.GetPrimitivegroup()))
 
 	var stringTable = ConvertStringTable(primitiveBlock.GetStringtable().GetS())
-	fmt.Println(" StringTable:", len(stringTable))
+	// fmt.Println(" StringTable:", len(stringTable))
 
 	var primitiveGroup = primitiveBlock.GetPrimitivegroup()
 
@@ -169,6 +189,7 @@ func handleRelations(pbRelations []*osmformat.Relation, stringTable []string, gr
 		}
 		relations = append(relations, relation)
 	}
+	fmt.Println("Relations: ", len(relations))
 	SaveRelations(relations)
 }
 
@@ -187,12 +208,12 @@ func handleWays(pbWays []*osmformat.Way, stringTable []string, granularity float
 		}
 		ways = append(ways, way)
 	}
+	fmt.Println("Ways: ", len(ways))
 	SaveWays(ways)
 }
 
 func handleNodes(denseNodes *osmformat.DenseNodes, stringTable []string, granularity float64, dateGranularity int64) {
 	size := len(denseNodes.GetId())
-
 	if size == 0 {
 		return
 	}
@@ -219,5 +240,7 @@ func handleNodes(denseNodes *osmformat.DenseNodes, stringTable []string, granula
 		}
 		nodes = append(nodes, node)
 	}
-	SaveNodes(nodes)
+	fmt.Println("Nodes: ", len(nodes))
+	// SaveNodes(nodes)
+	nodePool.SendWork(nodes)
 }
