@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"runtime"
+	"sync"
 
 	"github.com/ederoyd46/osm/fileformat"
 	"github.com/ederoyd46/osm/osmformat"
@@ -17,15 +18,15 @@ import (
 )
 
 var (
+	wg       sync.WaitGroup
 	nodePool *tunny.WorkPool
 )
 
-func createNodePool() {
+func createWorkerPool() {
 	numCPUs := runtime.NumCPU()
 	runtime.GOMAXPROCS(numCPUs)
 	nodePool, _ = tunny.CreatePool(numCPUs, func(nodes interface{}) interface{} {
 		input, _ := nodes.([]Node)
-		fmt.Println("Saving Nodes")
 		SaveNodes(input)
 		return 1
 	}).Open()
@@ -42,13 +43,15 @@ func main() {
 	dbname := os.Args[2]
 	filename := os.Args[3]
 
-	createNodePool()
+	createWorkerPool()
 	defer nodePool.Close()
 
 	InitDB(dbconnection, dbname)
 	startImport(filename)
-	KillSession()
 
+	fmt.Println("Waiting for all go routines to finish")
+	wg.Wait()
+	fmt.Println("Import Done")
 }
 
 func help() {
@@ -81,8 +84,6 @@ func getBlock(size int64, file *os.File) {
 	var header fileformat.BlockHeader
 	proto.Unmarshal(headerData, &header)
 
-	// fmt.Println(header.GetType())
-
 	blobData := make([]byte, header.GetDatasize())
 	file.Read(blobData)
 
@@ -91,9 +92,6 @@ func getBlock(size int64, file *os.File) {
 
 	zr, err := zlib.NewReader(bytes.NewBuffer(blob.GetZlibData()))
 	LogError(err)
-
-	// fmt.Println("Compressed Size", len(blob.GetZlibData()))
-	// fmt.Println("Raw Size:", blob.GetRawSize())
 
 	var blobUncompressed = make([]byte, blob.GetRawSize())
 	io.ReadFull(zr, blobUncompressed)
@@ -133,8 +131,6 @@ func osmData(blobUncompressed []byte) {
 	// fmt.Println(" PrimitiveGroups:", len(primitiveBlock.GetPrimitivegroup()))
 
 	var stringTable = ConvertStringTable(primitiveBlock.GetStringtable().GetS())
-	// fmt.Println(" StringTable:", len(stringTable))
-
 	var primitiveGroup = primitiveBlock.GetPrimitivegroup()
 
 	for _, group := range primitiveGroup {
@@ -189,8 +185,17 @@ func handleRelations(pbRelations []*osmformat.Relation, stringTable []string, gr
 		}
 		relations = append(relations, relation)
 	}
-	fmt.Println("Relations: ", len(relations))
-	SaveRelations(relations)
+
+	if len(relations) > 0 {
+		go func(data []Relation) {
+			wg.Add(1)
+			defer wg.Done()
+
+			SaveRelations(data)
+		}(relations)
+
+		fmt.Println("Relations: ", len(relations))
+	}
 }
 
 func handleWays(pbWays []*osmformat.Way, stringTable []string, granularity float64, dateGranularity int64) {
@@ -208,8 +213,17 @@ func handleWays(pbWays []*osmformat.Way, stringTable []string, granularity float
 		}
 		ways = append(ways, way)
 	}
-	fmt.Println("Ways: ", len(ways))
-	SaveWays(ways)
+
+	if len(ways) > 0 {
+		go func(data []Way) {
+			wg.Add(1)
+			defer wg.Done()
+
+			SaveWays(data)
+		}(ways)
+
+		fmt.Println("Ways: ", len(ways))
+	}
 }
 
 func handleNodes(denseNodes *osmformat.DenseNodes, stringTable []string, granularity float64, dateGranularity int64) {
@@ -240,7 +254,13 @@ func handleNodes(denseNodes *osmformat.DenseNodes, stringTable []string, granula
 		}
 		nodes = append(nodes, node)
 	}
-	fmt.Println("Nodes: ", len(nodes))
-	// SaveNodes(nodes)
-	nodePool.SendWork(nodes)
+
+	if len(nodes) > 0 {
+		go func(data []Node) {
+			wg.Add(1)
+			defer wg.Done()
+			nodePool.SendWork(data)
+		}(nodes)
+		fmt.Println("Nodes: ", len(nodes))
+	}
 }

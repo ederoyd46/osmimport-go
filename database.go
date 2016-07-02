@@ -3,7 +3,7 @@ package main
 import r "github.com/dancannon/gorethink"
 
 var (
-	session       *r.Session
+	host          string
 	databaseName  string
 	nodeTable     = "node"
 	wayTable      = "way"
@@ -11,6 +11,9 @@ var (
 )
 
 func checkDatabase() {
+	session := connect()
+	defer killSession(session)
+
 	databases, err := r.DBList().Run(session)
 	var result string
 	for databases.Next(&result) {
@@ -23,6 +26,9 @@ func checkDatabase() {
 }
 
 func checkTable(tname string) {
+	session := connect()
+	defer killSession(session)
+
 	tables, err := r.DB(databaseName).TableList().Run(session)
 	var result string
 	for tables.Next(&result) {
@@ -34,7 +40,7 @@ func checkTable(tname string) {
 	LogError(err)
 }
 
-func connect(host string) *r.Session {
+func connect() *r.Session {
 	var session *r.Session
 	session, err := r.Connect(r.ConnectOpts{
 		Address: host,
@@ -44,8 +50,8 @@ func connect(host string) *r.Session {
 }
 
 //InitDB Sets up the database connection pool
-func InitDB(host, dbname string) {
-	session = connect(host)
+func InitDB(hostName, dbname string) {
+	host = hostName
 	databaseName = dbname
 	checkDatabase()
 	checkTable(nodeTable)
@@ -53,25 +59,34 @@ func InitDB(host, dbname string) {
 	checkTable(relationTable)
 }
 
-//KillSession disconnects from the database
-func KillSession() {
+//killSession disconnects from the database
+func killSession(session *r.Session) {
 	session.Close()
 }
 
 //SaveNodes saves nodes to the database
 func SaveNodes(nodes []Node) {
+	session := connect()
+	defer killSession(session)
+
 	_, err := r.DB(databaseName).Table(nodeTable).Insert(nodes).RunWrite(session)
 	LogError(err)
 }
 
 //SaveWays saves a node to the database
 func SaveWays(ways []Way) {
+	session := connect()
+	defer killSession(session)
+
 	_, err := r.DB(databaseName).Table(wayTable).Insert(ways).RunWrite(session)
 	LogError(err)
 }
 
 //SaveRelations saves a node to the database
 func SaveRelations(relations []Relation) {
+	session := connect()
+	defer killSession(session)
+
 	_, err := r.DB(databaseName).Table(relationTable).Insert(relations).RunWrite(session)
 	LogError(err)
 }

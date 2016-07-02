@@ -22,8 +22,8 @@ update_deps:
 	go get -u github.com/dancannon/gorethink
 	#Worker Pool Framework
 	go get -u github.com/jeffail/tunny
-	# go get -u github.com/libgit2/git2go
-	# go get -u github.com/mattbaird/elastigo
+	#go get -u github.com/libgit2/git2go
+	go get -u github.com/mattbaird/elastigo
 
 run:
 	@find . -name '*.go' -print0 | xargs -0 go run
@@ -35,7 +35,7 @@ install:
 	@go install
 
 start_db_matts_mac:
-	rethinkdb -d /Volumes/Ramdisk/rethink_db &> /tmp/rethinkdb.log &
+	rethinkdb -d /Volumes/External/db/rethinkdb &> /tmp/rethinkdb.log &
 
 stop_db_matts_mac:
 	@pgrep rethinkdb | xargs kill
