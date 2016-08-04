@@ -18,19 +18,18 @@ import (
 )
 
 var (
-	wg       sync.WaitGroup
-	nodePool *tunny.WorkPool
+	wg         sync.WaitGroup
+	workerPool *tunny.WorkPool
 )
 
 func createWorkerPool() {
 	numCPUs := runtime.NumCPU()
 	runtime.GOMAXPROCS(numCPUs)
-	nodePool, _ = tunny.CreatePool(numCPUs, func(nodes interface{}) interface{} {
-		input, _ := nodes.([]Node)
-		SaveNodes(input)
+	workerPool, _ = tunny.CreatePool(numCPUs, func(data interface{}) interface{} {
+		input, _ := data.([]byte)
+		osmData(input)
 		return 1
 	}).Open()
-
 }
 
 func main() {
@@ -44,7 +43,7 @@ func main() {
 	filename := os.Args[3]
 
 	createWorkerPool()
-	defer nodePool.Close()
+	defer workerPool.Close()
 
 	InitDB(dbconnection, dbname)
 	startImport(filename)
@@ -103,7 +102,11 @@ func getBlock(size int64, file *os.File) {
 	}
 
 	if "OSMData" == header.GetType() {
-		osmData(blobUncompressed)
+		go func(data []byte) {
+			wg.Add(1)
+			defer wg.Done()
+			workerPool.SendWork(data)
+		}(blobUncompressed)
 	}
 
 	getBlock(4, file)
@@ -187,13 +190,13 @@ func handleRelations(pbRelations []*osmformat.Relation, stringTable []string, gr
 	}
 
 	if len(relations) > 0 {
-		go func(data []Relation) {
-			wg.Add(1)
-			defer wg.Done()
+		// go func(data []Relation) {
+		// 	wg.Add(1)
+		// 	defer wg.Done()
 
-			SaveRelations(data)
-		}(relations)
-
+		// 	SaveRelations(data)
+		// }(relations)
+		SaveRelations(relations)
 		fmt.Println("Relations: ", len(relations))
 	}
 }
@@ -215,13 +218,13 @@ func handleWays(pbWays []*osmformat.Way, stringTable []string, granularity float
 	}
 
 	if len(ways) > 0 {
-		go func(data []Way) {
-			wg.Add(1)
-			defer wg.Done()
+		// go func(data []Way) {
+		// 	wg.Add(1)
+		// 	defer wg.Done()
 
-			SaveWays(data)
-		}(ways)
-
+		// 	SaveWays(data)
+		// }(ways)
+		SaveWays(ways)
 		fmt.Println("Ways: ", len(ways))
 	}
 }
@@ -256,11 +259,12 @@ func handleNodes(denseNodes *osmformat.DenseNodes, stringTable []string, granula
 	}
 
 	if len(nodes) > 0 {
-		go func(data []Node) {
-			wg.Add(1)
-			defer wg.Done()
-			nodePool.SendWork(data)
-		}(nodes)
+		SaveNodes(nodes)
+		// go func(data []Node) {
+		// 	wg.Add(1)
+		// 	defer wg.Done()
+		// 	nodePool.SendWork(data)
+		// }(nodes)
 		fmt.Println("Nodes: ", len(nodes))
 	}
 }

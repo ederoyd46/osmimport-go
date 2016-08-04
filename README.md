@@ -33,18 +33,3 @@ Three options are needed to start the import process
 [EXAMPLE]
 
 osmimport-go '127.0.0.1:28015' 'geo' './download/england-latest.osm.pbf'
-
-<!-- Docker Usage
-------------
-Pull down the repository
-
-```
-docker pull ederoyd46/osmimport
-```
-
-Run an import, assumes you have a container called db, and have downloaded the england data from OSM in protocol buffer format
-
-```
-docker run -d --name mongo -p 27017:27017 -v $(pwd)/data:/data/db mongo
-docker run -it --rm=true --link mongo:mongo -v $(pwd)/download:/data ederoyd46/osmimport 'mongo:27017' 'geo_data' '/data/england-latest.osm.pbf'
-``` -->

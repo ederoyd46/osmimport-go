@@ -22,9 +22,7 @@ update_deps:
 	go get -u github.com/dancannon/gorethink
 	#Worker Pool Framework
 	go get -u github.com/jeffail/tunny
-	#go get -u github.com/libgit2/git2go
-	go get -u github.com/mattbaird/elastigo
-
+	
 run:
 	@find . -name '*.go' -print0 | xargs -0 go run
 
